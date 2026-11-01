@@ -1129,12 +1129,12 @@ type wrapToken struct {
 	linkStart   int
 }
 
-func matchLinkToken(line string, i int, spans [][2]int) int {
+func matchLinkToken(line string, i int, spans *codeSpanCursor) int {
 	if line[i] != '[' {
 		return 0
 	}
 	match := linkRegex.FindStringIndex(line[i:])
-	if match == nil || match[0] != 0 || IsInlineCodeRange(spans, i, i+match[1]) {
+	if match == nil || match[0] != 0 || spans.overlaps(i, i+match[1]) {
 		return 0
 	}
 	return match[1]
@@ -1142,7 +1142,7 @@ func matchLinkToken(line string, i int, spans [][2]int) int {
 
 // eachWrapToken consumes words as they are scanned, without retaining a token slice.
 func eachWrapToken(line string, consume func(wrapToken)) {
-	spans := InlineCodeSpans(line)
+	spans := codeSpanCursor{spans: InlineCodeSpans(line)}
 	spaceBefore := false
 	n := len(line)
 	for i := 0; i < n; {
@@ -1163,7 +1163,7 @@ func eachWrapToken(line string, consume func(wrapToken)) {
 			if unicode.IsSpace(r) {
 				break
 			}
-			if matchLen := matchLinkToken(line, i, spans); matchLen > 0 {
+			if matchLen := matchLinkToken(line, i, &spans); matchLen > 0 {
 				consume(wrapToken{text: line[start : i+matchLen], spaceBefore: spaceBefore, link: true, linkStart: i - start})
 				i += matchLen
 				link = true
